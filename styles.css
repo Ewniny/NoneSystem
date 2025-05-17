@@ -168,3 +168,75 @@ body {
     font-family: 'Courier New', monospace;
     margin: 10px 0;
 }
+/* Мобильная адаптация */
+@media (max-width: 768px) {
+    .nav-container {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    
+    .nav-button {
+        padding: 10px;
+        font-size: 0.8em;
+    }
+    
+    .status-card {
+        padding: 10px;
+    }
+    
+    .terminal-input {
+        width: 100%;
+        margin-bottom: 10px;
+    }
+}
+
+/* Защитная система */
+.auth-form {
+    max-width: 400px;
+    margin: 20px auto;
+    position: relative;
+}
+
+.security-status {
+    border: 1px solid var(--glitch-red);
+    padding: 10px;
+    margin-top: 15px;
+    animation: warning-blink 1s infinite;
+    display: none;
+}
+
+/* Анти-бот система */
+#captcha {
+    display: none;
+    margin: 15px 0;
+}
+
+.captcha-active {
+    display: block !important;
+}
+
+/* Адаптация чата */
+.chat-wrapper {
+    max-width: 800px;
+    margin: 0 auto;
+    border: 2px solid #00ff0050;
+    padding: 15px;
+}
+
+.chat-message {
+    padding: 8px;
+    margin: 5px 0;
+    background: rgba(0, 20, 0, 0.3);
+    border-left: 3px solid var(--main-color);
+}
+.mobile .status-grid {
+    grid-template-columns: 1fr;
+}
+
+.mobile .glitch-text {
+    font-size: 1.5em;
+}
+
+.mobile .terminal-input {
+    font-size: 16px;
+    padding: 12px;
+}

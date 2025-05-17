@@ -102,7 +102,117 @@ class VoidSystem {
         });
     }
 }
+class SecuritySystem {
+    constructor() {
+        this.attempts = 0;
+        this.blocked = false;
+        this.users = JSON.parse(localStorage.getItem('voidUsers')) || {};
+    }
 
+    register(login, pass) {
+        if (this.blocked) return this.showError('Система заблокирована');
+        
+        // Защита от брутфорса
+        if (this.attempts >= 3) {
+            this.activateCaptcha();
+            return this.showError('Требуется подтверждение');
+        }
+
+        // Валидация данных
+        if (!/^[a-zA-Z0-9]{4,20}$/.test(login)) {
+            this.attempts++;
+            return this.showError('Некорректный логин');
+        }
+
+        if (pass.length < 8) {
+            this.attempts++;
+            return this.showError('Слабый пароль');
+        }
+
+        // Хеширование пароля
+        const hash = btoa(encodeURIComponent(pass + login));
+        this.users[login] = { hash, attempts: 0 };
+        localStorage.setItem('voidUsers', JSON.stringify(this.users));
+        
+        // Активация 2FA
+        this.activate2FA(login);
+    }
+
+    activateCaptcha() {
+        document.getElementById('captcha').classList.add('captcha-active');
+        this.blocked = true;
+        setTimeout(() => {
+            this.blocked = false;
+            this.attempts = 0;
+        }, 60000);
+    }
+
+    activate2FA(login) {
+        const code = Math.floor(100000 + Math.random() * 900000);
+        // Здесь должна быть интеграция с API SMS
+        alert(`Код подтверждения: ${code}`);
+        this.verify2FA(code, login);
+    }
+
+    verify2FA(code, login) {
+        const enteredCode = prompt('Введите код из SMS');
+        if (enteredCode == code) {
+            showPage('chat');
+            sessionStorage.setItem('authToken', btoa(login));
+        } else {
+            this.showError('Неверный код');
+            delete this.users[login];
+        }
+    }
+
+    showError(message) {
+        const status = document.getElementById('securityStatus');
+        status.style.display = 'block';
+        status.textContent = `⚠️ ${message}`;
+    }
+}
+
+// Инициализация системы
+const security = new SecuritySystem();
+// Веб-сокет чат (имитация)
+function sendMessage() {
+    if (!sessionStorage.getItem('authToken')) return;
+    
+    const input = document.getElementById('chatInput');
+    const message = {
+        user: atob(sessionStorage.getItem('authToken')),
+        text: input.value,
+        time: new Date().toLocaleTimeString()
+    };
+    
+    // Эмуляция отправки
+    const msgElement = document.createElement('div');
+    msgElement.className = 'chat-message';
+    msgElement.innerHTML = `
+        <span class="msg-user">${message.user}</span>
+        <span class="msg-time">${message.time}</span>
+        <div class="msg-text">${message.text}</div>
+    `;
+    
+    document.getElementById('chatMessages').appendChild(msgElement);
+    input.value = '';
+}
+
+// Адаптер для мобильных устройств
+function mobileAdapt() {
+    if (/Mobi|Android/i.test(navigator.userAgent)) {
+        document.body.classList.add('mobile');
+        document.querySelectorAll('.nav-button').forEach(btn => {
+            btn.style.fontSize = '12px';
+        });
+    }
+}
+
+// Инициализация
+document.addEventListener('DOMContentLoaded', () => {
+    mobileAdapt();
+    if (!sessionStorage.getItem('authToken')) showPage('auth');
+});
 // Инициализация системы
 document.addEventListener('DOMContentLoaded', () => {
     const voidSystem = new VoidSystem();
