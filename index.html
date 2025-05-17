@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shadow Network v5.1.3</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="matrix-effect" id="matrix"></div>
+    <div class="scan-line"></div>
+    <div class="crt-effect"></div>
+    <div class="neon-glow" style="top:30%;left:70%"></div>
+    <div class="neon-glow" style="top:60%;left:20%"></div>
+
+    <div class="nav-container">
+        <button class="nav-button" onclick="showPage('main')">ЯДРО</button>
+        <button class="nav-button" onclick="showPage('dossier')">ДОСЬЕ</button>
+        <button class="nav-button" onclick="showPage('protocols')">ПРОТОКОЛЫ</button>
+        <button class="nav-button" onclick="showPage('artifacts')">АРТЕФАКТЫ</button>
+        <button class="nav-button" onclick="showPage('terminal')">ТЕРМИНАЛ</button>
+    </div>
+
+    <!-- Основные страницы -->
+    <div id="main" class="page active-page">
+        <!-- Содержимое главной страницы -->
+    </div>
+
+    <!-- Вкладка Досье -->
+    <div id="dossier" class="page">
+        <div class="status-card">
+            <h3>▓ ДЖОКЕР ▓</h3>
+            <div class="bio-content">
+                <p>Бывший нейрохирург, модифицировавший собственный мозг для доступа к квантовым сетям. В 2024 году внедрил вирус "Смех Хаоса" в инфраструктуру ЕС. Способен взламывать системы через сны операторов. Последний известный след: перехват спутниковой связи над Чёрным морем. Особые приметы: голографическая татуировка в форме клоунской маски на лице, меняющая узоры в реальном времени.</p>
+            <div class="hex-msg">4a 4f 4b 45 52 5f 4c 49 56 45 53</div>
+        </div>
+    </div>
+    
+    <div class="status-card">
+        <h3>▓ ГРУППА "АНАКРЫ" ▓</h3>
+        <div class="bio-content">
+                <p>Коллектив кибертеррористов-трансгуманистов. Основная цель: создание "Нейросферы" - глобальной сети подключённых мозгов. В 2025 году взломали систему защиты ЦЕРНа. Используют модифицированные вирусы на основе ДНК. Известные операции: "Квантовый смех" (дестабилизация банковских систем), "Нейрошторм" (массовые галлюцинации в радиусе 5 км). Последняя активность: перехват управления беспилотниками в зоне отчуждения.</p>
+                <div class="hex-msg">41 4e 41 4b 52 41 5f 52 49 53 49 4e 47</div>
+            </div>
+        </div>
+    </div>
+
+    <div id="protocols" class="page">
+        <!-- Содержимое протоколов -->
+    </div>
+
+    <div id="artifacts" class="page">
+        <!-- Содержимое артефактов -->
+    </div>
+
+    <!-- Секретные элементы -->
+    <div class="secret-trigger" onclick="showCreatorProfile()"></div>
+    <div id="creatorProfile" class="hidden-section">
+        <div class="glitch-container">
+            <h1 class="glitch-text">▓▒░ СОЗДАТЕЛЬ СИСТЕМЫ ░▒▓</h1>
+        </div>
+        <div class="quantum-portrait"></div>
+        <div class="hacker-list">
+            <div>■ Идентификация: EWNINY-ENTITY</div>
+            <div>■ Статус: Нелокализован</div>
+            <div>■ Последняя активность: 13.13.2025</div>
+            <div class="hex-msg">54 68 65 20 41 72 63 68 69 74 65 63 74 20 57 61 74 63 68 65 73</div>
+        </div>
+    </div>
+
+    <!-- Терминал -->
+    <div id="terminal" class="page">
+        <div class="glitch-container">
+            <h1 class="glitch-text">▓▒░ ТЕРМИНАЛ УРОВНЯ 0 ░▒▓</h1>
+        </div>
+        <div class="terminal-output" id="terminalOutput"></div>
+        <div class="terminal-controls">
+            <input type="text" class="terminal-input" id="commandInput" 
+                   placeholder="Введите команду..." autocomplete="off">
+            <button class="hack-button" onclick="executeVoidCommand()">▶ ВЫПОЛНИТЬ</button>
+        </div>
+    </div>
+    <!-- Скрытый чат -->
+    <div id="void-chat" class="hidden-section">
+        <div class="chat-container">
+            <div class="chat-messages" id="chatMessages"></div>
+            <input type="text" class="terminal-input" id="chatInput" 
+               placeholder="Введите сообщение... (анонимно)">
+            <button class="hack-button" onclick="sendMessage()">▶ ОТПРАВИТЬ</button>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

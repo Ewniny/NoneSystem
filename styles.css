@@ -1,0 +1,170 @@
+:root {
+    --main-color: #00ff00;
+    --bg-color: #000;
+    --terminal-font: 'Courier New', monospace;
+    --glitch-red: #ff0000;
+    --secret-blue: #0000ff;
+    --quantum-purple: #8000ff;
+}
+
+body {
+    background: radial-gradient(circle at 50% 50%, 
+        var(--bg-color) 0%, 
+        #001100 70%, 
+        #002200 100%);
+    color: var(--main-color);
+    font-family: var(--terminal-font);
+    margin: 0;
+    padding: 20px;
+    overflow-x: hidden;
+    position: relative;
+}
+
+.crt-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: repeating-linear-gradient(
+        0deg,
+        rgba(0, 0, 0, 0.15) 0px,
+        rgba(0, 0, 0, 0.15) 1px,
+        transparent 1px,
+        transparent 2px
+    );
+    pointer-events: none;
+    z-index: 9999;
+}
+
+.neon-glow {
+    position: fixed;
+    width: 300px;
+    height: 300px;
+    background: radial-gradient(circle, 
+        rgba(0, 255, 0, 0.1) 0%, 
+        transparent 70%);
+    filter: blur(30px);
+    pointer-events: none;
+    animation: quantum-flicker 7s infinite;
+}
+
+@keyframes quantum-flicker {
+    0%, 100% { opacity: 0.3; }
+    50% { opacity: 0.7; }
+}
+
+.nav-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 10px;
+    margin-bottom: 30px;
+    position: relative;
+    z-index: 2;
+}
+
+.nav-button {
+    background: rgba(0, 30, 0, 0.3);
+    border: 1px solid var(--main-color);
+    color: var(--main-color);
+    padding: 15px;
+    cursor: pointer;
+    transition: all 0.3s;
+    text-transform: uppercase;
+    position: relative;
+    overflow: hidden;
+}
+
+.nav-button:hover {
+    text-shadow: 0 0 15px var(--main-color);
+    box-shadow: 0 0 25px var(--main-color),
+                inset 0 0 10px rgba(0, 255, 0, 0.2);
+    transform: scale(1.05);
+}
+
+.page {
+    display: none;
+    opacity: 0;
+    animation: neural-flicker 2s infinite;
+    position: absolute;
+    width: calc(100% - 40px);
+    top: 100px;
+}
+
+.active-page {
+    display: block;
+    opacity: 1;
+}
+
+.status-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 20px;
+    margin: 30px 0;
+    position: relative;
+}
+
+.status-card {
+    border: 1px solid var(--main-color);
+    padding: 20px;
+    background: rgba(0, 20, 0, 0.1);
+    position: relative;
+    overflow: hidden;
+}
+
+.quantum-portrait {
+    width: 200px;
+    height: 200px;
+    margin: 20px auto;
+    background: radial-gradient(circle, 
+        var(--quantum-purple) 0%,
+        transparent 70%);
+    animation: entity-pulse 5s infinite;
+}
+
+@keyframes entity-pulse {
+    0%, 100% { transform: scale(0.95); opacity: 0.7; }
+    50% { transform: scale(1.05); opacity: 1; }
+}
+
+.hidden-section {
+    display: none;
+    opacity: 0;
+    transition: all 1s ease;
+}
+
+.terminal-output {
+    border: 1px solid var(--main-color);
+    background: rgba(0, 20, 0, 0.3);
+    padding: 15px;
+    margin: 10px 0;
+    border-radius: 4px;
+    position: relative;
+    min-height: 150px;
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.secret-trigger {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    width: 50px;
+    height: 50px;
+    background: rgba(0, 0, 255, 0.1);
+    border: 1px dashed var(--secret-blue);
+    cursor: pointer;
+    transition: all 0.5s;
+}
+
+.secret-trigger:hover {
+    background: rgba(0, 0, 255, 0.3);
+    transform: rotate(360deg);
+}
+
+.hex-msg {
+    color: #00ff0080;
+    font-size: 0.7em;
+    font-family: 'Courier New', monospace;
+    margin: 10px 0;
+}
