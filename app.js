@@ -13,7 +13,7 @@ const CONFIG = {
 };
 
 const GITHUB = {
-    GIST_ID: '1cefca9c4f4cdc898f1c99519c27c1f1',
+    GIST_ID: 'b69653e3262ea9f425fa1cf445531c27',
     TOKEN: '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',
     API: 'https://api.github.com/gists'
 };
@@ -375,12 +375,14 @@ class CyberSystem {
         }
     }
     async saveChat() {
+        // Локальное сохранение
+        localStorage.setItem('chatHistory', JSON.stringify(this.messages));
+    
+        // Синхронизация с GitHub
         try {
-            localStorage.setItem('chatHistory', JSON.stringify(this.messages));
-            // Для GitHub синхронизации:
-            await this.backupToGitHub('chat.json', this.messages);
+            await this.backupToGitHub();
         } catch (error) {
-            console.error('Ошибка сохранения чата:', error);
+            console.log("Сохранено локально. GitHub недоступен.");
         }
     }
     async loadChatHistory() {
