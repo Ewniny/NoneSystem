@@ -38,7 +38,7 @@ class CyberChat {
             ALLOWED_TAGS: [],
             ALLOWED_ATTR: []
         });
-    }
+    }   
 
     generateUserId() {
         const storedId = localStorage.getItem('anonymousId');
@@ -48,6 +48,29 @@ class CyberChat {
         localStorage.setItem('anonymousId', newId);
         return newId;
     }
+    initChat() {
+                const form = document.getElementById('chatForm');
+                const input = document.querySelector('.chat-input');
+                
+                form.addEventListener('submit', (e) => {
+                    e.preventDefault();
+                    const message = input.value.trim();
+                    if(message) {
+                        if(message.startsWith('/nick ')) {
+                            const newNick = message.split(' ')[1];
+                            if(newNick) this.updateNickname(newNick);
+                        } else {
+                            this.sendMessage(message);
+                        }
+                        input.value = '';
+                    }
+                });
+
+                onValue(messagesRef, (snapshot) => {
+                    this.messages = Object.values(snapshot.val() || {});
+                    this.renderChat();
+                });
+            }
 
     async updateNickname(newNick) {
         const sanitizedNick = this.sanitize(newNick.substring(0, 20));
@@ -62,7 +85,30 @@ class CyberChat {
             }
         }
     }
-
+    setupChatForm() {
+                const form = document.getElementById('chatForm');
+                const input = document.querySelector('.chat-input');
+                
+                form.addEventListener('submit', (e) => {
+                    e.preventDefault();
+                    const message = input.value.trim();
+                    if(message) {
+                        this.sendMessage(message);
+                        input.value = '';
+                    }
+                });
+            }
+    async sendMessage(content) {
+        try {
+         await push(messagesRef, {
+            userId: this.userId,
+            content: this.sanitize(content),
+            timestamp: Date.now()
+         });
+        } catch(error) {
+            onsole.error("Ошибка отправки:", error);
+        }
+    }
     renderChat() {
         const container = document.querySelector('.chat-container');
         container.innerHTML = '';
