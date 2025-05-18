@@ -13,7 +13,7 @@ const CONFIG = {
 };
 
 const GITHUB = {
-    GIST_ID: 'b69653e3262ea9f425fa1cf445531c27',
+    GIST_ID: '1cefca9c4f4cdc898f1c99519c27c1f1',
     TOKEN: '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',
     API: 'https://api.github.com/gists'
 };
@@ -234,10 +234,18 @@ class CyberSystem {
     }
     async checkForUpdates() {
         try {
-            const response = await fetch(`${GITHUB.API}/${GITHUB.GIST_ID}`);
+            const response = await fetch(`${GITHUB.API}/${GITHUB.GIST_ID}`, {
+                headers: {Authorization: `Bearer ${GITHUB.TOKEN}`}
+                });
             const data = await response.json();
             const remoteMessages = JSON.parse(data.files['chat.json'].content);
-        
+            if (!response.ok) {
+                if (response.status === 401) {
+                    this.showError('Ошибка доступа! Обновите токен');
+                    return;
+                }
+                throw new Error(`HTTP Error: ${response.status}`);
+            }
             // Определяем новые сообщения
             const newMessages = remoteMessages.filter(rm => 
                 !this.messages.some(m => m.id === rm.id)
