@@ -13,8 +13,8 @@ const CONFIG = {
 };
 
 const GITHUB = {
-    GIST_ID: '1cefca9c4f4cdc898f1c99519c27c1f1',
-    TOKEN: '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',
+    GIST_ID: 'b69653e3262ea9f425fa1cf445531c27',
+    TOKEN: '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',
     API: 'https://api.github.com/gists'
 };
 
