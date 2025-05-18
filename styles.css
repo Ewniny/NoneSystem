@@ -242,10 +242,40 @@ body {
 }
 
 @keyframes messageAppear {
-    from { opacity: 0; transform: translateX(-20px); }
-    to { opacity: 1; transform: translateX(0); }
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+.delivery-status {
+    font-size: 0.8em;
+    color: #bc13fe;
+    margin-left: 10px;
+    animation: statusPulse 1s infinite;
 }
 
+@keyframes statusPulse {
+    0% { opacity: 0.5; }
+    50% { opacity: 1; }
+    100% { opacity: 0.5; }
+}
+
+.confirmed {
+    color: #0f0 !important;
+}
+
+.pending {
+    color: #bc13fe;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
 /* Модальные окна */
 .cyber-modal {
     position: fixed;
