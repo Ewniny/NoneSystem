@@ -14,7 +14,7 @@ const CONFIG = {
 
 const GITHUB = {
     GIST_ID: 'b69653e3262ea9f425fa1cf445531c27',
-    TOKEN: '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',
+    TOKEN: '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',
     API: 'https://api.github.com/gists'
 };
 
