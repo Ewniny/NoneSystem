@@ -28,7 +28,8 @@ class CyberSystem {
         this.sessions = new Map();
         this.lockouts = new Map();
         this.securityLevel = 100;
-
+        this.lastUpdate = 0;
+        this.startChatAutoRefresh();
         this.userBadge = document.getElementById('userBadge');
         this.initValidationMessages();
         this.messages = [];
@@ -40,6 +41,48 @@ class CyberSystem {
         this.checkSession();
         this.setupHUD();
         this.animate();
+    }
+    startChatAutoRefresh() {
+        // Основной цикл обновлений
+        setInterval(() => this.checkForUpdates(), 5000);
+        
+        // WebSocket соединение для мгновенных обновлений
+        this.setupWebSocket();
+    }
+    async checkForUpdates() {
+        try {
+            const lastLocalUpdate = localStorage.getItem('chatLastUpdate') || 0;
+            
+            // Проверяем изменения в GitHub Gist
+            const response = await fetch(`${GITHUB.API}/${GITHUB.GIST_ID}/commits`, {
+                headers: {Authorization: `Bearer ${GITHUB.TOKEN}`}
+            });
+            
+            const commits = await response.json();
+            const lastRemoteUpdate = new Date(commits[0]?.committed_at).getTime();
+
+            if (lastRemoteUpdate > lastLocalUpdate) {
+                await this.syncWithGitHub();
+                this.showSystemAlert('Получены новые сообщения', 'info');
+            }
+
+            // Проверяем локальные изменения
+            const localMessages = JSON.parse(localStorage.getItem('chatHistory')) || [];
+            if (localMessages.length !== this.messages.length) {
+                this.messages = localMessages;
+                this.renderChat();
+            }
+
+        } catch (error) {
+            console.error('Update check failed:', error);
+        }
+    }
+    animateMessage(message) {
+        const lastMsg = document.querySelector('.message:last-child');
+        if (lastMsg) {
+            lastMsg.style.animation = 'messageAppear 0.5s ease';
+            setTimeout(() => lastMsg.style.animation = '', 500);
+        }
     }
     // Токен должен иметь разрешение gist
     async backupToGitHub() {
