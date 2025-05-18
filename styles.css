@@ -9,447 +9,89 @@
     --hacker-font: 'Source Code Pro', monospace;
 }
 
-/* Сброс стилей */
-* {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
-    font-family: var(--hacker-font);
-}
-
+/* styles.css */
 body {
-    background: radial-gradient(circle at center, 
-        var(--terminal-bg), 
-        var(--deep-space));
-    color: var(--matrix-green);
-    min-height: 100vh;
-    overflow-x: hidden;
-    line-height: 1.6;
+    margin: 0;
+    background: #000;
+    font-family: 'Courier New', monospace;
+    color: #0f0;
 }
 
-/* CRT Эффект */
-.crt::after {
-    content: "";
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: repeating-linear-gradient(
-        0deg,
-        rgba(0, 0, 0, 0.15) 0px,
-        rgba(0, 0, 0, 0.15) 1px,
-        transparent 1px,
-        transparent 2px
-    );
-    pointer-events: none;
-    z-index: 9999;
+.crt {
+    animation: flicker 0.15s infinite;
 }
 
-/* Матричный фон */
-#matrixCanvas {
-    position: fixed;
-    top: 0;
-    left: 0;
-    z-index: -1;
-    opacity: 0.3;
-}
-
-/* Анимации */
-@keyframes glitch {
-    0% { text-shadow: 2px 0 var(--neon-purple); }
-    25% { text-shadow: -2px 0 var(--cyber-blue); }
-    50% { text-shadow: 3px 0 var(--error-red); }
-    100% { text-shadow: 2px 0 var(--neon-purple); }
-}
-
-@keyframes pulse {
-    0% { opacity: 0.3; }
+@keyframes flicker {
+    0% { opacity: 0.9; }
     50% { opacity: 1; }
-    100% { opacity: 0.3; }
-}
-
-@keyframes hologram {
-    0% { filter: hue-rotate(0deg); }
-    100% { filter: hue-rotate(360deg); }
-}
-
-.glitch-text {
-    animation: glitch 1s infinite;
-}
-
-.neon-pulse {
-    animation: pulse 2s infinite;
-}
-
-.hologram-effect {
-    animation: hologram 6s infinite;
-}
-
-/* Система аутентификации */
-.auth-container {
-    position: relative;
-    max-width: 600px;
-    margin: 5vh auto;
-    padding: 2rem;
-    background: rgba(0, 30, 0, 0.2);
-    border: 2px solid var(--matrix-green);
-    border-radius: 5px;
-    backdrop-filter: blur(10px);
-    z-index: 1000;
-    box-shadow: 0 0 50px rgba(0,255,157,0.1);
-}
-
-.auth-mode-selector {
-    display: flex;
-    gap: 1rem;
-    margin-bottom: 2rem;
-}
-
-.mode-btn {
-    flex: 1;
-    padding: 1rem;
-    background: rgba(0, 40, 0, 0.3);
-    border: 1px solid var(--matrix-green);
-    color: var(--cyber-blue);
-    cursor: pointer;
-    transition: all 0.3s;
-    position: relative;
-    text-align: center;
-}
-
-.mode-btn.active {
-    background: rgba(0, 255, 157, 0.1);
-    border-color: var(--neon-purple);
-    box-shadow: 0 0 15px rgba(188, 19, 254, 0.3);
-}
-
-.mode-btn::after {
-    content: '';
-    position: absolute;
-    bottom: -3px;
-    left: 0;
-    width: 100%;
-    height: 2px;
-    background: var(--matrix-green);
-    opacity: 0;
-    transition: opacity 0.3s;
-}
-
-.mode-btn.active::after {
-    opacity: 1;
-}
-
-.auth-form {
-    display: none;
-    opacity: 0;
-    transform: translateY(20px);
-    transition: all 0.3s ease;
-}
-
-.auth-form.active {
-    display: block;
-    opacity: 1;
-    transform: translateY(0);
-}
-
-/* Поля ввода */
-.hacker-input {
-    width: 100%;
-    padding: 1rem;
-    margin: 1rem 0;
-    background: rgba(0, 20, 0, 0.5);
-    border: 1px solid var(--matrix-green);
-    color: var(--cyber-blue);
-    font-size: 1.1rem;
-    transition: all 0.3s;
-}
-
-.hacker-input:focus {
-    outline: 2px solid var(--neon-purple);
-    box-shadow: 0 0 30px rgba(188,19,254,0.3);
-}
-
-/* Кнопки */
-.cyber-btn {
-    position: relative;
-    padding: 1rem 2rem;
-    background: linear-gradient(45deg, 
-        rgba(0,255,157,0.1), 
-        rgba(0,247,255,0.2));
-    border: 2px solid var(--matrix-green);
-    color: var(--cyber-blue);
-    cursor: pointer;
-    overflow: hidden;
-    transition: all 0.3s;
-    margin-top: 1rem;
-}
-
-.cyber-btn::before {
-    content: '';
-    position: absolute;
-    top: -50%;
-    left: -50%;
-    width: 200%;
-    height: 200%;
-    background: linear-gradient(
-        45deg,
-        transparent 25%,
-        rgba(0,255,157,0.2) 50%,
-        transparent 75%
-    );
-    animation: scan 4s linear infinite;
-}
-
-/* Навигация */
-.neural-nav {
-    display: flex;
-    justify-content: space-between;
-    padding: 1rem;
-    background: rgba(0, 40, 0, 0.3);
-    border-bottom: 2px solid var(--neon-purple);
-}
-
-.nav-btn {
-    padding: 0.8rem 1.5rem;
-    background: rgba(0, 60, 0, 0.3);
-    border: 1px solid var(--cyber-blue);
-    margin: 0 0.5rem;
-    transition: all 0.3s;
-    color: var(--matrix-green);
-}
-
-.nav-btn.active {
-    background: rgba(0,255,157,0.1);
-    box-shadow: 0 0 20px rgba(0,255,157,0.2);
+    100% { opacity: 0.9; }
 }
 
 .chat-container {
-    height: 60vh;
+    position: fixed;
+    top: 20px;
+    left: 20px;
+    right: 20px;
+    bottom: 80px;
     overflow-y: auto;
-    background: rgba(0, 30, 0, 0.7);
-    border: 1px solid #0f0;
-    padding: 15px;
-    margin: 10px 0;
+    padding: 10px;
+    border: 1px solid #0f03;
+    background: #000000aa;
 }
 
 .message {
-    background: rgba(15, 255, 0, 0.05);
-    margin: 8px 0;
-    padding: 10px;
-    border-left: 3px solid #0f0;
-    animation: messageAppear 0.3s ease;
+    margin: 10px;
+    padding: 15px;
+    border: 1px solid #0f03;
+    border-radius: 5px;
+    background: #001100;
 }
 
-@keyframes messageAppear {
-    from {
-        opacity: 0;
-        transform: translateY(20px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-.delivery-status {
-    font-size: 0.8em;
-    color: #bc13fe;
-    margin-left: 10px;
-    animation: statusPulse 1s infinite;
+.message.self {
+    border-color: #0f0;
+    background: #002200;
 }
 
-@keyframes statusPulse {
-    0% { opacity: 0.5; }
-    50% { opacity: 1; }
-    100% { opacity: 0.5; }
-}
-
-.confirmed {
-    color: #0f0 !important;
-}
-
-.pending {
-    color: #bc13fe;
-    animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-    to { transform: rotate(360deg); }
-}
-/* Модальные окна */
-.cyber-modal {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(0,0,0,0.9);
-    display: none;
-    align-items: center;
-    justify-content: center;
-    z-index: 10000;
-}
-
-.cyber-modal.active {
+.msg-header {
     display: flex;
+    justify-content: space-between;
+    margin-bottom: 5px;
+    font-size: 0.9em;
+    opacity: 0.7;
 }
 
-.modal-core {
-    background: rgba(0, 30, 0, 0.9);
-    border: 2px solid var(--neon-purple);
-    padding: 2rem;
-    max-width: 600px;
-    width: 90%;
-    position: relative;
+.user-id {
+    color: #0f0;
+    font-weight: bold;
 }
 
-/* HUD система */
-.cyber-hud {
+.chat-form {
     position: fixed;
     bottom: 20px;
+    left: 20px;
     right: 20px;
     display: flex;
-    gap: 1rem;
-    z-index: 1001;
+    gap: 10px;
 }
 
-.hud-item {
-    padding: 1rem;
-    background: rgba(0, 20, 0, 0.8);
-    border: 1px solid var(--matrix-green);
-}
-
-.hud-bar {
-    height: 5px;
-    margin-top: 0.5rem;
-    background: rgba(0,255,157,0.3);
-    transition: width 0.5s ease;
-}
-
-/* Адаптивность */
-@media (max-width: 768px) {
-    .auth-container {
-        margin: 2rem;
-        padding: 1rem;
-    }
-
-    .auth-mode-selector {
-        flex-direction: column;
-    }
-
-    .neural-nav {
-        flex-direction: column;
-        gap: 1rem;
-    }
-
-    .chat-container {
-        height: 60vh;
-    }
-}
-
-@media (max-width: 480px) {
-    .hacker-input {
-        font-size: 1rem;
-    }
-
-    .cyber-btn {
-        padding: 0.8rem 1.2rem;
-    }
-}
-
-/* Специальные эффекты */
-@keyframes scanline {
-    0% { top: -10%; }
-    100% { top: 110%; }
-}
-
-.dna-spiral {
-    position: relative;
-    width: 100px;
-    height: 200px;
-    animation: dnaRotate 10s linear infinite;
-}
-
-@keyframes dnaRotate {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
-}
-
-.system-pulse {
-    position: absolute;
-    width: 100%;
-    height: 100%;
-    border: 2px solid var(--error-red);
-    animation: pulseBorder 1s infinite;
-}
-
-@keyframes pulseBorder {
-    0% { opacity: 1; transform: scale(1); }
-    100% { opacity: 0; transform: scale(1.2); }
-}
-@media (max-width: 768px) {
-    .neuro-input {
-        position: relative;
-    }
-
-    .neuro-input input {
-        padding-right: 60px !important;
-    }
-
-    .transmit-btn {
-        position: absolute;
-        right: 5px;
-        bottom: 5px;
-        padding: 8px 15px;
-        display: block !important;
-    }
-}
-.user-badge {
-  background: #0f0;
-  padding: 5px 15px;
-  border-radius: 3px;
-  box-shadow: 0 0 10px #0f0;
-}
-
-.admin-tag {
-  color: #ff003c;
-  margin-left: 10px;
-}
-
-.delete-btn {
-  background: none;
-  border: none;
-  color: #ff003c;
-  cursor: pointer;
-}
-/* Бейдж пользователя */
-.user-badge {
-    background: rgba(15, 255, 0, 0.1);
-    padding: 8px 20px;
+.chat-input {
+    flex-grow: 1;
+    padding: 15px;
+    background: #000;
     border: 1px solid #0f0;
-    border-radius: 4px;
-    margin: 0 20px;
-    font-size: 0.9em;
-    box-shadow: 0 0 15px rgba(15, 255, 0, 0.2);
+    color: #0f0;
+    font-family: inherit;
 }
 
-.user-badge .admin-tag {
-    color: #ff003c;
-    margin-left: 10px;
-    text-shadow: 0 0 8px rgba(255, 0, 60, 0.5);
-}
-
-/* Кнопка удаления */
-.delete-btn {
-    background: transparent;
+.chat-form button {
+    padding: 15px 25px;
+    background: #0f0;
     border: none;
-    color: #ff003c;
     cursor: pointer;
-    margin-left: 10px;
-    transition: all 0.3s;
+    font-weight: bold;
+    color: #000;
 }
 
-.delete-btn:hover {
-    transform: scale(1.2);
-    text-shadow: 0 0 10px #ff003c;
+.chat-form button:hover {
+    background: #0d0;
 }

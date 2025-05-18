@@ -1,251 +1,155 @@
+<!-- index.html -->
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-    <!-- Метаданные и стили -->
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CyberNetwork v5.0</title>
+    <title>Anonymous CyberChat</title>
     <link rel="stylesheet" href="styles.css">
-    <link href="https://fonts.googleapis.com/css2?family=Source+Code+Pro:wght@400;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-</head>
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/9.0.0/firebase-app.js';
+        import { getDatabase, ref, push, onValue } from 'https://www.gstatic.com/firebasejs/9.0.0/firebase-database.js';
 
+        const firebaseConfig = {
+            apiKey: "AIzaSyB-eRbjF4omwbuuM__W4evKAFsK_jlHxWo",
+            authDomain: "ewniny.firebaseapp.com",
+            databaseURL: "https://ewniny-default-rtdb.firebaseio.com",
+            projectId: "ewniny",
+            storageBucket: "ewniny.appspot.com",
+            messagingSenderId: "376739063376",
+            appId: "1:376739063376:web:5e47e361c2418a9c60d355"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+        const messagesRef = ref(db, 'messages');
+
+        class CyberChat {
+            constructor() {
+                this.userId = this.generateUserId();
+                this.initMatrix();
+                this.initChat();
+                this.messages = []; // Инициализируем пустой массив сообщений
+            }
+
+            generateUserId() {
+                const storedId = localStorage.getItem('anonymousId');
+                if(storedId) return storedId;
+                
+                const newId = 'id-' + Math.random().toString(36).substr(2, 9);
+                localStorage.setItem('anonymousId', newId);
+                return newId;
+            }
+
+            initMatrix() {
+                const canvas = document.getElementById('matrixCanvas');
+                if(!canvas) return;
+                
+                const ctx = canvas.getContext('2d');
+                canvas.width = window.innerWidth;
+                canvas.height = window.innerHeight;
+
+                const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789@#$%^&*()";
+                const drops = new Array(Math.floor(canvas.width/20)).fill(0);
+
+                const draw = () => {
+                    ctx.fillStyle = 'rgba(0, 0, 0, 0.05)';
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+                    ctx.fillStyle = '#0F0';
+                    ctx.font = '20px monospace';
+
+                    drops.forEach((y, i) => {
+                        ctx.fillText(
+                            chars[Math.floor(Math.random()*chars.length)],
+                            i*20,
+                            y*20
+                        );
+                        drops[i] = y > canvas.height/20 ? 0 : y + 1.5;
+                    });
+
+                    requestAnimationFrame(draw);
+                };
+                draw();
+            }
+
+            initChat() {
+                this.setupChatForm();
+                this.loadChatHistory();
+                
+                onValue(messagesRef, (snapshot) => {
+                    const data = snapshot.val();
+                    this.messages = Object.values(data || {});
+                    this.renderChat();
+                });
+            }
+
+            setupChatForm() {
+                const form = document.getElementById('chatForm');
+                const input = document.querySelector('.chat-input');
+                
+                form.addEventListener('submit', (e) => {
+                    e.preventDefault();
+                    const message = input.value.trim();
+                    if(message) {
+                        this.sendMessage(message);
+                        input.value = '';
+                    }
+                });
+            }
+
+            async sendMessage(content) {
+                try {
+                    await push(messagesRef, {
+                        userId: this.userId,
+                        content: content,
+                        timestamp: Date.now()
+                    });
+                } catch(error) {
+                    console.error("Ошибка отправки:", error);
+                    alert('Ошибка отправки: Проверьте подключение и права доступа');
+                }
+            }
+
+            renderChat() {
+                const container = document.querySelector('.chat-container');
+                container.innerHTML = '';
+                
+                this.messages.forEach(msg => {
+                    const msgElement = document.createElement('div');
+                    msgElement.className = `message ${msg.userId === this.userId ? 'self' : ''}`;
+                    
+                    msgElement.innerHTML = `
+                        <div class="msg-header">
+                            <span class="user-id">${msg.userId}</span>
+                            <span class="time">${new Date(msg.timestamp).toLocaleTimeString()}</span>
+                        </div>
+                        <div class="msg-content">${msg.content}</div>
+                    `;
+                    
+                    container.appendChild(msgElement);
+                });
+                
+                container.scrollTop = container.scrollHeight;
+            }
+        }
+
+        // Инициализация при загрузке
+        window.addEventListener('DOMContentLoaded', () => {
+            new CyberChat();
+        });
+    </script>
+</head>
 <body class="crt">
-    <!-- Матричный фон -->
     <canvas id="matrixCanvas"></canvas>
 
-    <!-- Секция аутентификации -->
-    <div id="auth-container" class="auth-container">
-        <!-- Заголовок -->
-        <div class="auth-header">
-            <div class="quantum-lock">
-                <div class="particle-network"></div>
-                <i class="fas fa-atom"></i>
-            </div>
-            <h2 class="cyber-title">NEURAL ACCESS TERMINAL</h2>
-        </div>
+    <div class="chat-container"></div>
 
-        <!-- Переключатель режимов -->
-        <div class="auth-mode-selector">
-            <button class="mode-btn active" data-mode="login">Вход</button>
-            <button class="mode-btn" data-mode="register">Регистрация</button>
-            <button class="mode-btn" data-mode="recovery">Код доступа</button>
-        </div>
+    <form id="chatForm" class="chat-form">
+        <input type="text" class="chat-input" placeholder="Введите сообщение...">
+        <button type="submit">➤</button>
+    </form>
 
-        <!-- Форма входа -->
-        <form id="loginForm" class="auth-form active" data-mode="login">
-            <div class="input-group">
-                <div class="hologram-label">
-                    <i class="fas fa-user-secret"></i>
-                    Нейро-идентификатор
-                </div>
-                <input type="text" 
-                    class="hacker-input" 
-                    name="login" 
-                    pattern="[A-Z0-9]{8}-[A-Z0-9]{4}"
-                    required>
-                <div class="input-border"></div>
-            </div>
-
-            <div class="input-group">
-                <div class="hologram-label">
-                    <i class="fas fa-key"></i>
-                    Криптографический ключ
-                </div>
-                <input type="password" 
-                    class="hacker-input" 
-                    name="password"
-                    required>
-                <div class="input-border"></div>
-            </div>
-
-            <button type="submit" class="cyber-btn pulse">
-                <i class="fas fa-terminal"></i>
-                ПОДКЛЮЧЕНИЕ
-                <div class="btn-glitch"></div>
-            </button>
-        </form>
-
-        <!-- Форма регистрации -->
-        <form id="registerForm" class="auth-form" data-mode="register">
-            <div class="input-group">
-                <div class="hologram-label">
-                    <i class="fas fa-id-card"></i>
-                    Новый идентификатор
-                </div>
-                <input 
-                    type="text" 
-                    class="hacker-input" 
-                    name="newLogin"
-                    pattern="[A-Z0-9]{8}-[A-Z0-9]{4}"
-                    placeholder="Формат: ABCDEFGH-1234"
-                    title="8 заглавных букв/цифр, дефис, 4 символа"
-                    required
-                    >
-                <div class="input-border"></div>
-            </div>
-            <div class="password-section">
-                <div class="input-group">
-                    <div class="hologram-label">
-                        <i class="fas fa-lock"></i>
-                        Шифр безопасности
-                    </div>
-                    <input type="password" 
-                        class="hacker-input" 
-                        name="newPassword"
-                        required>
-                    <div class="input-border"></div>
-                </div>
-
-                <div class="input-group">
-                    <div class="hologram-label">
-                        <i class="fas fa-redo"></i>
-                        Подтверждение шифра
-                    </div>
-                    <input type="password" 
-                        class="hacker-input" 
-                        name="confirmPassword"
-                        required>
-                    <div class="input-border"></div>
-                </div>
-            </div>
-
-            <button type="submit" class="cyber-btn glitch">
-                <i class="fas fa-database"></i>
-                СОЗДАТЬ СЕКТОР
-                <div class="btn-glitch"></div>
-            </button>
-        </form>
-
-        <!-- Форма восстановления -->
-        <form id="recoveryForm" class="auth-form" data-mode="recovery">
-            <div class="input-group">
-                <div class="hologram-label">
-                    <i class="fas fa-qrcode"></i>
-                    Экстренный код
-                </div>
-                <input type="text" 
-                    class="hacker-input" 
-                    placeholder="Введите код доступа"
-                    required>
-                <div class="code-generator">
-                    <button type="button" class="cyber-btn small" id="generateCode">
-                        <i class="fas fa-redo"></i>
-                        Сгенерировать новый код
-                    </button>
-                    <div class="generated-code"></div>
-                </div>
-            </div>
-            <button type="submit" class="cyber-btn danger">
-                <i class="fas fa-unlock"></i>
-                ПОДТВЕРДИТЬ ДОСТУП
-            </button>
-        </form>
-    </div>
-
-    <!-- Основной интерфейс -->
-    <div id="mainInterface" class="hidden">
-        <!-- Навигация -->
-        <nav class="neural-nav">
-            <div class="nav-core">
-                <div class="hologram-logo">
-                    <div class="glitch-effect"></div>
-                    <span>SHADOW_OS</span>
-                </div>
-                <!-- Бейдж пользователя (добавить здесь) -->
-                <div id="userBadge" class="user-badge">
-                    <i class="fas fa-user-secret"></i>
-                    Гость
-                </div>
-                <div class="nav-sections">
-                    <button class="nav-btn active" data-page="chat">
-                        <i class="fas fa-comments"></i>
-                        Neural Chat
-                    </button>
-                    <button class="nav-btn" data-page="network">
-                        <i class="fas fa-brain"></i>
-                        Neuro Net
-                    </button>
-                    <button class="nav-btn danger" data-action="logout">
-                        <i class="fas fa-skull"></i>
-                        Terminate
-                    </button>
-                </div>
-            </div>
-        </nav>
-
-        <!-- Контент -->
-        <div class="cyber-content">
-            <!-- Чат -->
-            <div id="chatPage" class="page active">
-                <div class="chat-header">
-                    <h2 class="glitch-text" data-text="ТЕНЕВОЙ_КАНАЛ">
-                        <i class="fas fa-satellite"></i>
-                        ТЕНЕВОЙ_КАНАЛ
-                    </h2>
-                    <div class="encryption-status">
-                        <i class="fas fa-lock"></i>
-                        <span>Шифрование: AES-512</span>
-                    </div>
-                </div>
-
-                <div class="chat-container">
-                    <!-- Сообщения будут загружаться динамически -->
-                </div>
-
-                <form id="chatForm" class="neuro-input">
-                    <div class="input-wrapper">
-                        <i class="fas fa-brain"></i>
-                        <input type="text" 
-                            class="hacker-input" 
-                            placeholder="Введите нейро-импульс...">
-                        <div class="neuro-visualizer"></div>
-                    </div>
-                    <button type="submit" class="cyber-btn transmit-btn">
-                        <i class="fas fa-broadcast-tower"></i>
-                        ТРАНСЛЯЦИЯ
-                    </button>
-                </form>
-            </div>
-
-            <!-- Сеть -->
-            <div id="networkPage" class="page">
-                <div class="network-map">
-                    <div class="node center-node" data-user="System">
-                        <div class="node-pulse"></div>
-                        <i class="fas fa-dna"></i>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Системные элементы -->
-    <div id="notificationCenter" class="neuro-notifications">
-        <div class="notification alert">
-            <i class="fas fa-exclamation-triangle"></i>
-            <span>Статус системы: НОРМАЛЬНЫЙ</span>
-        </div>
-    </div>
-
-    <div class="cyber-hud">
-        <div class="hud-item">
-            <i class="fas fa-shield-alt"></i>
-            <div class="hud-bar security"></div>
-        </div>
-        <div class="hud-item">
-            <i class="fas fa-network-wired"></i>
-            <div class="hud-bar network"></div>
-        </div>
-        <div class="hud-item">
-            <i class="fas fa-microchip"></i>
-            <div class="hud-bar performance"></div>
-        </div>
-    </div>
-
-    <!-- 3D визуализация -->
     <div id="webgl-container"></div>
-    <script src="app.js"></script>
 </body>
 </html>
