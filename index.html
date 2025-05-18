@@ -12,13 +12,14 @@
         import { getDatabase, ref, push, onValue } from 'https://www.gstatic.com/firebasejs/9.0.0/firebase-database.js';
 
         const firebaseConfig = {
-            apiKey: "AIzaSyB-eRbjF4omwbuuM__W4evKAFsK_jlHxWo",
-            authDomain: "ewniny.firebaseapp.com",
-            databaseURL: "https://ewniny-default-rtdb.firebaseio.com",
-            projectId: "ewniny",
-            storageBucket: "ewniny.appspot.com",
-            messagingSenderId: "376739063376",
-            appId: "1:376739063376:web:5e47e361c2418a9c60d355"
+            apiKey: "AIzaSyDoYJUZvfODd9uqzMvH0Drw3fz6ruZJfBI",
+            authDomain: "ewninyarg.firebaseapp.com",
+            databaseURL: "https://ewninyarg-default-rtdb.europe-west1.firebasedatabase.app",
+            projectId: "ewninyarg",
+            storageBucket: "ewninyarg.firebasestorage.app",
+            messagingSenderId: "1092242784203",
+            appId: "1:1092242784203:web:9561a4a6a300650bc5804e",
+            measurementId: "G-2GDKKQVPV0"
         };
 
         const app = initializeApp(firebaseConfig);
@@ -75,7 +76,6 @@
 
             initChat() {
                 this.setupChatForm();
-                this.loadChatHistory();
                 
                 onValue(messagesRef, (snapshot) => {
                     const data = snapshot.val();
