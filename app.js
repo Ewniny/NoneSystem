@@ -28,7 +28,8 @@ class CyberSystem {
         this.sessions = new Map();
         this.lockouts = new Map();
         this.securityLevel = 100;
-        
+        this.syncInterval = setInterval(() => this.checkForUpdates(), 5000);
+        this.backupInterval = setInterval(() => this.backupToGitHub(), 15000);
         this.userBadge = document.getElementById('userBadge');
         this.initValidationMessages();
         this.messages = [];
@@ -41,32 +42,29 @@ class CyberSystem {
         this.setupHUD();
         this.animate();
     }
-    // Токен должен иметь разрешение gist
     async backupToGitHub() {
         try {
             const response = await fetch(`${GITHUB.API}/${GITHUB.GIST_ID}`, {
-            method: 'PATCH',
-            headers: {
-                Authorization: `Bearer ${GITHUB.TOKEN}`, // Используйте Bearer-аутентификацию
-                'Content-Type': 'application/json',
-                'User-Agent': 'CyberSystem/1.0' // GitHub требует User-Agent
-            },
-            body: JSON.stringify({
-                files: {
-                    'network.json': {
-                    content: JSON.stringify([...this.nodes]),
-                    filename: "network-backup.json"
+                method: 'PATCH',
+                headers: {
+                    Authorization: `Bearer ${GITHUB.TOKEN}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    files: {
+                        'chat.json': {
+                            content: JSON.stringify(this.messages),
+                            filename: "chat-backup.json"
+                        }
                     }
-                }
-            })
-        });
+                })
+            });
 
-        if (!response.ok) {
-            throw new Error(`GitHub Error: ${response.status} ${await response.text()}`);
-        }
-        }catch (error) {
-            console.error('GitHub Backup Failed:', error);
-            this.showError(`Сбой синхронизации: ${error.message}`);
+            if (!response.ok) throw new Error('GitHub API error');
+        
+        } catch (error) {
+            console.error('Backup error:', error);
+            throw error;
         }
     }
     initChat() {
@@ -226,46 +224,86 @@ class CyberSystem {
             chatInput.style.paddingRight = '70px';
             sendButton.style.display = 'block';
         }
+    }   
+    startChatAutoRefresh() {
+        // Проверка обновлений каждые 10 секунд
+        setInterval(() => this.checkForUpdates(), 10000);
+    
+        // Первая проверка сразу после загрузки
+        this.checkForUpdates();
+    }
+    async checkForUpdates() {
+        try {
+            const response = await fetch(`${GITHUB.API}/${GITHUB.GIST_ID}`);
+            const data = await response.json();
+            const remoteMessages = JSON.parse(data.files['chat.json'].content);
+        
+            // Определяем новые сообщения
+            const newMessages = remoteMessages.filter(rm => 
+                !this.messages.some(m => m.id === rm.id)
+            );
+        
+            if (newMessages.length > 0) {
+                this.messages = [...this.messages, ...newMessages];
+                this.renderChat();
+                this.showSystemAlert('Получены новые сообщения', 'info');
+            }
+        
+            // Обновляем список пользователей
+            this.updateUserList(remoteMessages);
+
+        } catch (error) {
+            if (error.message.includes('rate limit')) {
+                this.showError('Превышен лимит запросов к GitHub');
+            } else {
+                this.showError('Ошибка синхронизации: ' + error.message);
+            }
+        
+            // Пробуем использовать локальные данные
+            const localMessages = JSON.parse(localStorage.getItem('chatHistory')) || [];
+            if (localMessages.length > this.messages.length) {
+                this.messages = localMessages;
+                this.renderChat();
+            }
+        }   
     }
 
+    updateUserList(messages) {
+        const users = [...new Set(messages.map(m => m.sender))];
+        const userList = document.getElementById('userList');
+    
+        userList.innerHTML = users.map(u => `
+            <li class="${u === this.currentUser ? 'self' : ''}">
+                ${u} ${this.admins.has(u) ? '<span class="admin-tag">ADMIN</span>' : ''}
+            </li>
+        `).join('');
+    }
     async sendMessage(content) {
-    try {
-        if (!this.currentUser) {
-            throw new Error("Требуется авторизация!");
-        }
-        // Секретная активация админки
-        if (content === ADMIN_CODE && this.currentUser === "EWNINYBR-0001") {
-                this.admins.add(this.currentUser);
-                localStorage.setItem('neuroAdmins', JSON.stringify([...this.admins]));
-                this.updateUserBadge();
-                this.showSystemAlert('Доступ 0xADMIN активирован', 'success');
-                return;
-        }
-        // Секретная команда очистки чата
-        if (content === '#clear' && this.admins.has(this.currentUser)) {
-            this.messages = [];
-            await this.saveChat();
+        try {
+            const newMessage = {
+                id: crypto.randomUUID(),
+                sender: this.currentUser,
+                content,
+                timestamp: Date.now(),
+                confirmed: false
+            };
+
+            // Локальное сохранение
+            this.messages.push(newMessage);
             this.renderChat();
-            this.showSystemAlert('Нейро-чат перезагружен', 'success');
-            return;
-        }
-        const newMessage = {
-            id: crypto.randomUUID(),
-            sender: this.currentUser,
-            content,
-            timestamp: Date.now(),
-            encrypted: false
-        };
+        
+            // Синхронизация с GitHub
+            await this.backupToGitHub();
+            this.showSystemAlert('Сообщение отправлено', 'success');
+        
+            return true;
 
-        this.messages.push(newMessage);
-        this.renderChat(); // Принудительный перерендер
-        await this.saveChat();
-
-    } catch (error) {
-        console.error("Ошибка отправки:", error);
-        this.showError(`Чат недоступен: ${error.message}`);
+        } catch (error) {
+            console.error("Ошибка отправки:", error);
+            this.showError(`Ошибка сети: ${error.message}`);
+            return false;
         }
-    }
+    }   
      // Валидация формата логина
     validateLoginFormat(login) {
         return /^[A-Z0-9]{8}-[A-Z0-9]{4}$/.test(login);
@@ -316,9 +354,17 @@ class CyberSystem {
     renderChat() {
         const container = document.querySelector('.chat-container');
         container.innerHTML = '';
+    
         this.messages.forEach(msg => {
-            container.appendChild(this.renderMessage(msg));
+            const msgElement = this.renderMessage(msg);
+            container.appendChild(msgElement);
         });
+    
+        // Автоскролл только если пользователь внизу
+        const isScrolledUp = container.scrollTop + container.clientHeight < container.scrollHeight - 100;
+        if (!isScrolledUp) {
+        container.scrollTop = container.scrollHeight;
+        }
     }
     async saveChat() {
         try {
