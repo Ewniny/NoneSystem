@@ -1,235 +1,645 @@
-class VoidSystem {
+'use strict';
+const ADMIN_CODE = '#ADMIN_EWNINYBR_15';
+const CONFIG = {
+    matrix: {
+        chars: "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789@#$%^&*()",
+        fontSize: 20,
+        dropSpeed: 1.5
+    },
+    security: {
+        maxAttempts: 3,
+        lockoutTime: 300000
+    }
+};
+
+const GITHUB = {
+    GIST_ID: '1cefca9c4f4cdc898f1c99519c27c1f1',
+    TOKEN: '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',
+    API: 'https://api.github.com/gists'
+};
+
+class CyberSystem {
     constructor() {
-        this.entity = {
-            accessLevel: 0,
-            failCount: 0,
-            selfDestruct: false,
-            secrets: {
-                login: "43 68 6f 73 65 6e 4f 6e 65",
-                pass: "736563726574313233",
-                accessKey: "ZXdydHl1aW8="
-            }
-        };
-    }
+        this.users = JSON.parse(localStorage.getItem('neuroUsers')) || {};
+        // Восстанавливаем сессию админа
+        this.admins = new Set(JSON.parse(localStorage.getItem('neuroAdmins')) || []);
+        this.currentUser = null;
+        this.nodes = new Map();
+        this.sessions = new Map();
+        this.lockouts = new Map();
+        this.securityLevel = 100;
 
-    init() {
-        this.setupMatrixEffect();
+        this.userBadge = document.getElementById('userBadge');
+        this.initValidationMessages();
+        this.messages = [];
+        this.initChat();
+        this.initMatrix();
+        this.initWebGL();
+        this.setupAuthSystem();
         this.setupEventListeners();
-        setInterval(() => this.updateMetrics(), 2000);
+        this.checkSession();
+        this.setupHUD();
+        this.animate();
+    }
+    // Токен должен иметь разрешение gist
+    async backupToGitHub() {
+        try {
+            const response = await fetch(`${GITHUB.API}/${GITHUB.GIST_ID}`, {
+            method: 'PATCH',
+            headers: {
+                Authorization: `Bearer ${GITHUB.TOKEN}`, // Используйте Bearer-аутентификацию
+                'Content-Type': 'application/json',
+                'User-Agent': 'CyberSystem/1.0' // GitHub требует User-Agent
+            },
+            body: JSON.stringify({
+                files: {
+                    'network.json': {
+                    content: JSON.stringify([...this.nodes]),
+                    filename: "network-backup.json"
+                    }
+                }
+            })
+        });
+
+        if (!response.ok) {
+            throw new Error(`GitHub Error: ${response.status} ${await response.text()}`);
+        }
+        }catch (error) {
+            console.error('GitHub Backup Failed:', error);
+            this.showError(`Сбой синхронизации: ${error.message}`);
+        }
+    }
+    initChat() {
+        const chatContainer = document.querySelector('.chat-container');
+    
+        // Делегирование событий для удаления
+        chatContainer.addEventListener('click', (e) => {
+        if (e.target.closest('.delete-btn')) {
+            const messageId = e.target.closest('.message').dataset.id;
+            this.deleteMessage(messageId);
+            }
+        });
+        this.setupChatForm();
+        this.loadChatHistory();
     }
 
-    setupMatrixEffect() {
-        const chars = '01░▒▓█╳⛶';
-        const matrix = document.getElementById('matrix');
-        
-        setInterval(() => {
-            const span = document.createElement('span');
-            span.style = `left: ${Math.random() * 100}%;
-                animation: fall ${3 + Math.random() * 5}s linear infinite;`;
-            span.textContent = chars[Math.floor(Math.random()*chars.length)];
-            matrix.appendChild(span);
-            setTimeout(() => span.remove(), 5000);
-        }, 100);
+    initMatrix() {
+        const canvas = document.getElementById('matrixCanvas');
+        if (!canvas) return;
+
+        const ctx = canvas.getContext('2d');
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+
+        const chars = CONFIG.matrix.chars;
+        const drops = new Array(Math.floor(canvas.width / 20)).fill(0);
+
+        const draw = () => {
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.05)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = '#0F0';
+            ctx.font = `${CONFIG.matrix.fontSize}px monospace`;
+
+            drops.forEach((y, i) => {
+                ctx.fillText(
+                    chars[Math.floor(Math.random() * chars.length)],
+                    i * 20,
+                    y * 20
+                );
+                drops[i] = y > canvas.height / 20 ? 0 : y + CONFIG.matrix.dropSpeed;
+            });
+
+            requestAnimationFrame(draw);
+        };
+        draw();
     }
 
-    updateMetrics() {
-        document.querySelectorAll('.progress-fill').forEach(bar => {
-            bar.style.width = `${Math.random() * 80 + 10}%`;
+    initWebGL() {
+        this.scene = new THREE.Scene();
+        this.camera = new THREE.PerspectiveCamera(
+            75,
+            window.innerWidth / window.innerHeight,
+            0.1,
+            1000
+        );
+        this.renderer = new THREE.WebGLRenderer({ antialias: true });
+        this.renderer.setSize(window.innerWidth, window.innerHeight);
+        document.getElementById('webgl-container').appendChild(this.renderer.domElement);
+
+        const geometry = new THREE.IcosahedronGeometry(2, 1);
+        const material = new THREE.MeshBasicMaterial({
+            color: 0x00ff00,
+            wireframe: true
+        });
+        this.core = new THREE.Mesh(geometry, material);
+        this.scene.add(this.core);
+        this.camera.position.z = 5;
+    }
+
+    setupAuthSystem() {
+        this.setupAuthSwitcher();
+        this.setupFormHandlers();
+    }
+    // Инициализация кастомной валидации
+    initValidationMessages() {
+        document.querySelectorAll('input[pattern]').forEach(input => {
+            input.addEventListener('invalid', (e) => {
+            const field = e.target;
+            if (field.name === 'login') {
+                field.setCustomValidity('Формат: 8 символов-4 символа (A-Z, 0-9)');
+            } else {
+                field.setCustomValidity('');
+                }
+            });
+        });
+    }
+    setupAuthSwitcher() {
+        document.querySelectorAll('.mode-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const mode = e.target.dataset.mode;
+                this.switchAuthMode(mode);
+            });
         });
     }
 
-    executeVoidCommand() {
-        const input = document.getElementById('commandInput').value;
-        let output = `<span class="glitch-text">> ${input}</span><br>`;
-        
-        if(this.entity.selfDestruct) {
-            output += "СИСТЕМА ЗАБЛОКИРОВАНА<br>";
-            document.getElementById('terminalOutput').innerHTML += output;
-            return;
-        }
+    switchAuthMode(mode) {
+        document.querySelectorAll('.auth-form').forEach(form => {
+            form.classList.toggle('active', form.dataset.mode === mode);
+        });
 
-        if(/ewniny|создатель/i.test(input)) {
-            this.entity.failCount++;
-            output += "ДОСТУП ЗАПРЕЩЁН<br>";
-            output += `<span class="hex-msg">${this.generateHexTeasing()}</span>`;
-        }
-
-        if(input === "login ChosenOne" && this.entity.accessLevel === 0) {
-            this.entity.accessLevel++;
-            output += "ЛОГИН ПРИНЯТ. ВВЕДИТЕ ПАРОЛЬ (ШИФР: HEX->ASCII)";
-        }
-
-        if(input === "password secret123" && this.entity.accessLevel === 1) {
-            output += "ДОСТУП 1/2 ОДОБРЕН. ОЖИДАЙТЕ КВАНТОВОЙ СВЯЗИ<br>";
-            output += `<span class="hex-msg">54 68 65 20 41 72 63 68 69 74 65 63 74 20 69 73 20 77 61 74 63 68 69 6e 67</span>`;
-            setTimeout(() => showCreatorProfile(), 5000);
-        }
-
-        document.getElementById('terminalOutput').innerHTML += output + "<br>";
-        document.getElementById('commandInput').value = '';
-
-        if(this.entity.failCount > 2) this.activateSelfDestruct();
+        document.querySelectorAll('.mode-btn').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.mode === mode);
+        });
     }
 
-    generateHexTeasing() {
-        const messages = [
-            "45 57 4e 49 4e 59 5f 53 45 45 53 5f 41 4c 4c",
-            "59 6f 75 27 72 65 20 6e 6f 74 20 77 6f 72 74 68 79",
-            "44 65 6c 65 74 69 6e 67 20 75 73 65 72 5f 64 61 74 61"
-        ];
-        return messages[Math.floor(Math.random() * messages.length)];
+    setupFormHandlers() {
+        this.setupForm('#loginForm', this.handleLogin.bind(this));
+        this.setupForm('#registerForm', this.handleRegister.bind(this));
+        this.setupForm('#recoveryForm', this.handleRecovery.bind(this));
     }
 
-    activateSelfDestruct() {
-        this.entity.selfDestruct = true;
-        document.getElementById('terminalOutput').innerHTML += 
-            `<span class="warning">САМОУНИЧТОЖЕНИЕ ЧЕРЕЗ 60 СЕКУНД</span><br>`;
-        
-        let count = 60;
-        const timer = setInterval(() => {
-            document.getElementById('terminalOutput').innerHTML += 
-                `> СИСТЕМА ОТКАЗЫВАЕТ: ${count--}<br>`;
-            if(count < 0) {
-                clearInterval(timer);
-                document.body.innerHTML = '<h1 class="glitch-text">SYSTEM TERMINATED</h1>';
-            }
-        }, 1000);
+    setupForm(selector, handler) {
+        const form = document.querySelector(selector);
+        if (form) {
+            form.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                try {
+                    await handler(new FormData(form));
+                    this.toggleUI(true);
+                } catch (error) {
+                    this.showError(error.message);
+                }
+            });
+        }
     }
 
     setupEventListeners() {
-        document.getElementById('commandInput').addEventListener('keypress', (e) => {
-            if(e.key === 'Enter') this.executeVoidCommand();
+        window.addEventListener('resize', () => this.onWindowResize());
+        
+        document.querySelectorAll('.nav-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                if (btn.dataset.action === 'logout') this.handleLogout();
+                if (btn.dataset.page) this.switchPage(btn.dataset.page);
+            });
         });
     }
-}
-class SecuritySystem {
-    constructor() {
-        this.attempts = 0;
-        this.blocked = false;
-        this.users = JSON.parse(localStorage.getItem('voidUsers')) || {};
+    setupChatForm() {
+        const chatForm = document.getElementById('chatForm');
+        const chatInput = chatForm.querySelector('input');
+        const sendButton = chatForm.querySelector('button');
+
+        // Обработчик для Enter и кнопки
+        const handleSubmit = (e) => {
+            e.preventDefault();
+            const message = chatInput.value.trim();
+            if (message) {
+                this.sendMessage(message);
+                chatInput.value = '';
+            }
+        };
+
+        chatForm.addEventListener('submit', handleSubmit);
+        sendButton.addEventListener('click', handleSubmit);
+
+        // Адаптация для мобильных устройств
+        if (/Mobi|Android/i.test(navigator.userAgent)) {
+            chatInput.style.paddingRight = '70px';
+            sendButton.style.display = 'block';
+        }
     }
 
-    register(login, pass) {
-        if (this.blocked) return this.showError('Система заблокирована');
+    async sendMessage(content) {
+    try {
+        if (!this.currentUser) {
+            throw new Error("Требуется авторизация!");
+        }
+        // Секретная активация админки
+        if (content === ADMIN_CODE && this.currentUser === "EWNINYBR-0001") {
+                this.admins.add(this.currentUser);
+                localStorage.setItem('neuroAdmins', JSON.stringify([...this.admins]));
+                this.updateUserBadge();
+                this.showSystemAlert('Доступ 0xADMIN активирован', 'success');
+                return;
+        }
+        // Секретная команда очистки чата
+        if (content === '#clear' && this.admins.has(this.currentUser)) {
+            this.messages = [];
+            await this.saveChat();
+            this.renderChat();
+            this.showSystemAlert('Нейро-чат перезагружен', 'success');
+            return;
+        }
+        const newMessage = {
+            id: crypto.randomUUID(),
+            sender: this.currentUser,
+            content,
+            timestamp: Date.now(),
+            encrypted: false
+        };
+
+        this.messages.push(newMessage);
+        this.renderChat(); // Принудительный перерендер
+        await this.saveChat();
+
+    } catch (error) {
+        console.error("Ошибка отправки:", error);
+        this.showError(`Чат недоступен: ${error.message}`);
+        }
+    }
+     // Валидация формата логина
+    validateLoginFormat(login) {
+        return /^[A-Z0-9]{8}-[A-Z0-9]{4}$/.test(login);
+    }
+    // Обновление отображения пользователя
+    updateUserBadge() {
+        this.userBadge.innerHTML = `
+        <i class="fas fa-user"></i>
+        ${this.currentUser}
+        ${this.isAdmin() ? '<span class="admin-tag">ADMIN</span>' : ''}
+        `;
+    }
+    // Проверка прав администратора
+    isAdmin() {
+        return this.admins.has(this.currentUser);
+    }
+    // Удаление сообщений
+    deleteMessage(messageId) {
+        if (!this.isAdmin()) {
+          this.showError('Требуются права администратора!');
+          return;
+        }
+
+        this.messages = this.messages.filter(msg => msg.id !== messageId);
+        this.saveChat();
+        this.renderChat(); // Полный перерендер чата
+    }
+    // Модифицированный рендер сообщений
+    renderMessage(message) {
+        const messageDiv = document.createElement('div');
+        messageDiv.className = `message ${message.sender === this.currentUser ? 'self' : ''}`;
+        messageDiv.dataset.id = message.id;
+    
+        messageDiv.innerHTML = `
+        <div class="msg-header">
+            <span class="sender">${message.sender}</span>
+            ${this.isAdmin() ? `
+            <button class="delete-btn">
+                <i class="fas fa-skull"></i>
+            </button>` : ''}
+            <span class="time">${new Date(message.timestamp).toLocaleTimeString()}</span>
+        </div>
+        <div class="msg-content">${message.content}</div>
+        `;
+
+        return messageDiv;
+    }
+    renderChat() {
+        const container = document.querySelector('.chat-container');
+        container.innerHTML = '';
+        this.messages.forEach(msg => {
+            container.appendChild(this.renderMessage(msg));
+        });
+    }
+    async saveChat() {
+        try {
+            localStorage.setItem('chatHistory', JSON.stringify(this.messages));
+            // Для GitHub синхронизации:
+            await this.backupToGitHub('chat.json', this.messages);
+        } catch (error) {
+            console.error('Ошибка сохранения чата:', error);
+        }
+    }
+    async loadChatHistory() {
+        try {
+            this.messages = JSON.parse(localStorage.getItem('chatHistory')) || [];
+            this.messages.forEach(msg => this.renderMessage(msg));
+        } catch (error) {
+            console.error('Ошибка загрузки чата:', error);
+        }
+    }
+    
+    // Исправленная система аутентификации
+    async handleLogin(formData) {
+        const login = formData.get('login').trim().toUpperCase();
+        const password = formData.get('password').trim();
+
+        if (!this.validateLoginFormat(login)) {
+            this.showError('Неверный формат идентификатора!');
+            return;
+        }
+
+        const user = this.users[login];
+        if (!user || !(await this.verifyPassword(password, user.password))) {
+            this.handleFailedAttempt(login);
+            throw new Error('Неверные учетные данные');
+        }
+        this.currentUser = login;
+        this.updateUserBadge();
+        this.startSession(login);
+        this.showSystemAlert(`Добро пожаловать, ${login}!`, 'success');
+    }
+    // Сохранение сессии
+    startSession(login) {
+        sessionStorage.setItem('neuroUser', JSON.stringify({
+            login,
+            isAdmin: this.isAdmin()
+        }));
+    
+        // Сохраняем админов в localStorage
+        localStorage.setItem('neuroAdmins', JSON.stringify([...this.admins]));
+    }
+
+    isAdmin() {
+        return this.admins.has(this.currentUser);
+    }
+
+
+    showSystemAlert(message, type = 'info') {
+        const alert = document.createElement('div');
+        alert.className = `system-alert ${type}`;
+        alert.innerHTML = `
+            <i class="fas fa-${type === 'success' ? 'check' : 'exclamation'}"></i>
+            ${message}
+        `;
         
-        // Защита от брутфорса
-        if (this.attempts >= 3) {
-            this.activateCaptcha();
-            return this.showError('Требуется подтверждение');
-        }
-
-        // Валидация данных
-        if (!/^[a-zA-Z0-9]{4,20}$/.test(login)) {
-            this.attempts++;
-            return this.showError('Некорректный логин');
-        }
-
-        if (pass.length < 8) {
-            this.attempts++;
-            return this.showError('Слабый пароль');
-        }
-
-        // Хеширование пароля
-        const hash = btoa(encodeURIComponent(pass + login));
-        this.users[login] = { hash, attempts: 0 };
-        localStorage.setItem('voidUsers', JSON.stringify(this.users));
-        
-        // Активация 2FA
-        this.activate2FA(login);
+        document.body.appendChild(alert);
+        setTimeout(() => alert.remove(), 3000);
     }
 
-    activateCaptcha() {
-        document.getElementById('captcha').classList.add('captcha-active');
-        this.blocked = true;
-        setTimeout(() => {
-            this.blocked = false;
-            this.attempts = 0;
-        }, 60000);
-    }
-
-    activate2FA(login) {
-        const code = Math.floor(100000 + Math.random() * 900000);
-        // Здесь должна быть интеграция с API SMS
-        alert(`Код подтверждения: ${code}`);
-        this.verify2FA(code, login);
-    }
-
-    verify2FA(code, login) {
-        const enteredCode = prompt('Введите код из SMS');
-        if (enteredCode == code) {
-            showPage('chat');
-            sessionStorage.setItem('authToken', btoa(login));
-        } else {
-            this.showError('Неверный код');
-            delete this.users[login];
+    // Исправленный метод проверки сессии
+    checkSession() {
+        const sessionData = sessionStorage.getItem('neuroSession');
+        if (sessionData) {
+            try {
+                const { token, user } = JSON.parse(sessionData);
+                if (this.sessions.has(token) && this.users[user]) {
+                    this.currentUser = user;
+                    this.toggleUI(true);
+                    return true;
+                }
+            } catch (e) {
+                sessionStorage.removeItem('neuroSession');
+            }
         }
+        return false;
+    }
+
+    async handleRegister(formData) {
+        try {
+            const login = formData.get('newLogin').trim().toUpperCase();
+            const password = formData.get('newPassword');
+            const confirm = formData.get('confirmPassword');
+
+            // Валидация формата логина
+            if (!/^[A-Z0-9]{8}-[A-Z0-9]{4}$/.test(login)) {
+                throw new Error('Неверный формат идентификатора! Пример: ABCD1234-5678');
+            }
+
+            // Проверка совпадения паролей
+            if (password !== confirm) {
+                throw new Error('Криптографические ключи не совпадают');
+            }
+
+            // Проверка существующего пользователя
+            if (this.users[login]) {
+                throw new Error('Нейро-идентификатор уже существует');
+            }
+
+            // Хеширование пароля
+            const hashedPassword = await this.hashPassword(password);
+
+            // Создание записи пользователя
+            this.users[login] = {
+                password: hashedPassword,
+                created: Date.now(),
+                securityLevel: 1,
+                lastLogin: null
+            };
+
+
+            // Сохранение данных
+            localStorage.setItem('neuroUsers', JSON.stringify(this.users));
+
+            // Автоматический вход
+            this.startSession(login);
+            this.showSystemAlert(`Сектор ${login} успешно создан`, 'success');
+            this.switchPage('chat');
+
+        } catch (error) {
+            this.showError(error.message);
+            throw error; // Для повторной обработки в вызывающем коде
+        }
+    }
+
+    async handleRecovery(formData) {
+        const code = formData.get('code').trim();
+        if (!this.validateRecoveryCode(code)) {
+            throw new Error('Недействительный код восстановления');
+        }
+        this.activateEmergencyAccess();
+    }
+
+    async hashPassword(password) {
+        const encoder = new TextEncoder();
+        const data = encoder.encode(password);
+        const hash = await crypto.subtle.digest('SHA-512', data);
+        return Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, '0')).join('');
+    }
+
+    async verifyPassword(input, storedHash) {
+        const inputHash = await this.hashPassword(input);
+        return inputHash === storedHash;
+    }
+
+    startSession(login) {
+        const sessionToken = crypto.randomUUID();
+        this.sessions.set(sessionToken, {
+            login,
+            startTime: Date.now(),
+            lastActivity: Date.now()
+        });
+
+        sessionStorage.setItem('neuroSession', JSON.stringify({
+            token: sessionToken,
+            user: login
+        }));
+
+        this.currentUser = login;
+        this.toggleUI(true);
+    }
+
+    toggleUI(loggedIn) {
+        document.getElementById('auth-container').style.display = loggedIn ? 'none' : 'block';
+        document.getElementById('mainInterface').style.display = loggedIn ? 'block' : 'none';
+    }
+
+    handleFailedAttempt(login) {
+        const attempts = this.lockouts.get(login) || { count: 0, timestamp: 0 };
+        attempts.count++;
+        attempts.timestamp = Date.now();
+        this.lockouts.set(login, attempts);
+
+        if (attempts.count >= CONFIG.security.maxAttempts) {
+            setTimeout(() => {
+                this.lockouts.delete(login);
+            }, CONFIG.security.lockoutTime);
+            throw new Error(`Аккаунт заблокирован на ${CONFIG.security.lockoutTime/60000} минут`);
+        }
+    }
+
+    isAccountLocked(login) {
+        const lock = this.lockouts.get(login);
+        return lock && lock.count >= CONFIG.security.maxAttempts;
+    }
+
+    activateEmergencyAccess() {
+        this.currentUser = 'EMERGENCY';
+        sessionStorage.setItem('neuroEmergency', JSON.stringify({
+            timestamp: Date.now()
+        }));
+        this.toggleUI(true);
+    }
+
+    checkSession() {
+        const session = JSON.parse(sessionStorage.getItem('neuroSession'));
+        if (session && this.users[session.user]) {
+            this.currentUser = session.user;
+            this.toggleUI(true);
+        }
+    }
+
+    handleLogout() {
+        sessionStorage.removeItem('neuroSession');
+        this.currentUser = null;
+        this.toggleUI(false);
+    }
+
+    switchPage(page) {
+        document.querySelectorAll('.page').forEach(p => {
+            p.classList.toggle('active', p.id === `${page}Page`);
+        });
+    }
+
+    setupHUD() {
+        this.hudElements = {
+            security: document.querySelector('.hud-bar.security'),
+            network: document.querySelector('.hud-bar.network'),
+            memory: document.querySelector('.hud-bar.memory')
+        };
+
+        setInterval(() => {
+            this.securityLevel = Math.min(100, Math.max(0, 
+                this.securityLevel + (Math.random() - 0.5) * 2
+            ));
+            this.updateHUD();
+        }, 2000);
+    }
+
+    updateHUD() {
+        this.hudElements.security.style.width = `${this.securityLevel}%`;
+        this.hudElements.security.style.backgroundColor = 
+            this.securityLevel > 75 ? '#0F0' :
+            this.securityLevel > 50 ? '#bc13fe' : 
+            '#ff003c';
+    }
+
+    onWindowResize() {
+        // Матрица
+        const canvas = document.getElementById('matrixCanvas');
+        if (canvas) {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+
+        // WebGL
+        this.camera.aspect = window.innerWidth / window.innerHeight;
+        this.camera.updateProjectionMatrix();
+        this.renderer.setSize(window.innerWidth, window.innerHeight);
+
+        // Чат
+        const chatContainer = document.querySelector('.chat-container');
+        if (chatContainer) {
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+    }
+
+    animate() {
+        requestAnimationFrame(() => this.animate());
+        this.core.rotation.x += 0.01;
+        this.core.rotation.y += 0.01;
+        this.renderer.render(this.scene, this.camera);
     }
 
     showError(message) {
-        const status = document.getElementById('securityStatus');
-        status.style.display = 'block';
-        status.textContent = `⚠️ ${message}`;
+        const errorDiv = document.createElement('div');
+        errorDiv.className = 'error-notification';
+        errorDiv.textContent = message;
+        document.body.appendChild(errorDiv);
+        setTimeout(() => errorDiv.remove(), 3000);
+    }
+
+    validateRecoveryCode(code) {
+        const validCodes = JSON.parse(localStorage.getItem('emergencyCodes')) || [];
+        return validCodes.some(c => c.code === code && c.expires > Date.now());
+    }
+
+    async syncWithGitHub() {
+        try {
+            const response = await fetch(`${GITHUB.API}/${GITHUB.GIST_ID}`, {
+                headers: { Authorization: `token ${GITHUB.TOKEN}` }
+            });
+            const data = await response.json();
+            this.nodes = new Map(JSON.parse(data.files['network.json'].content));
+        } catch (error) {
+            this.showError('Ошибка синхронизации с GitHub');
+        }
+    }
+
+    async backupToGitHub() {
+        try {
+            await fetch(`${GITHUB.API}/${GITHUB.GIST_ID}`, {
+                method: 'PATCH',
+                headers: {
+                    Authorization: `token ${GITHUB.TOKEN}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    files: { 'network.json': { content: JSON.stringify([...this.nodes]) } }
+                })
+            });
+        } catch (error) {
+            this.showError('Ошибка резервного копирования');
+        }
     }
 }
 
-// Инициализация системы
-const security = new SecuritySystem();
-// Веб-сокет чат (имитация)
-function sendMessage() {
-    if (!sessionStorage.getItem('authToken')) return;
-    
-    const input = document.getElementById('chatInput');
-    const message = {
-        user: atob(sessionStorage.getItem('authToken')),
-        text: input.value,
-        time: new Date().toLocaleTimeString()
-    };
-    
-    // Эмуляция отправки
-    const msgElement = document.createElement('div');
-    msgElement.className = 'chat-message';
-    msgElement.innerHTML = `
-        <span class="msg-user">${message.user}</span>
-        <span class="msg-time">${message.time}</span>
-        <div class="msg-text">${message.text}</div>
-    `;
-    
-    document.getElementById('chatMessages').appendChild(msgElement);
-    input.value = '';
-}
-
-// Адаптер для мобильных устройств
-function mobileAdapt() {
-    if (/Mobi|Android/i.test(navigator.userAgent)) {
-        document.body.classList.add('mobile');
-        document.querySelectorAll('.nav-button').forEach(btn => {
-            btn.style.fontSize = '12px';
-        });
+document.addEventListener('DOMContentLoaded', () => {
+    try {
+        new CyberSystem();
+    } catch (error) {
+        const errorDiv = document.createElement('div');
+        errorDiv.className = 'system-failure';
+        errorDiv.textContent = 'КРИТИЧЕСКИЙ СБОЙ СИСТЕМЫ';
+        document.body.appendChild(errorDiv);
     }
-}
-
-// Инициализация
-document.addEventListener('DOMContentLoaded', () => {
-    mobileAdapt();
-    if (!sessionStorage.getItem('authToken')) showPage('auth');
 });
-// Инициализация системы
-document.addEventListener('DOMContentLoaded', () => {
-    const voidSystem = new VoidSystem();
-    voidSystem.init();
-});
-
-function showPage(pageId) {
-    document.querySelectorAll('.page').forEach(page => {
-        page.style.display = 'none';
-        page.classList.remove('active-page');
-    });
-    const activePage = document.getElementById(pageId);
-    activePage.style.display = 'block';
-    setTimeout(() => activePage.classList.add('active-page'), 10);
-}
-
-function showCreatorProfile() {
-    document.getElementById('creatorProfile').style.display = 'block';
-    document.querySelector('.quantum-portrait').style.animation = 'entity-pulse 2s infinite';
-}
