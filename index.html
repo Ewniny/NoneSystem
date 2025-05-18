@@ -14,7 +14,8 @@
             ref, 
             push, 
             onValue, 
-            onDisconnect
+            onDisconnect,
+            set
         } from 'https://www.gstatic.com/firebasejs/9.0.0/firebase-database.js';
         import { getStorage, ref as storageRef, uploadBytes, getDownloadURL } from 'https://www.gstatic.com/firebasejs/9.0.0/firebase-storage.js';
         const firebaseConfig = {
@@ -171,47 +172,41 @@
             }
             setupPresence() {
                 try {
-                    // Создаем новую запись в базе данных
-                    const presenceRef = push(ref(db, 'connections'));
-                    this.presenceRef = presenceRef;
+                    const db = getDatabase();
+                    const connectionsRef = ref(db, 'connections');
+                    
+                    // Создаем новую запись
+                    const newPresenceRef = push(connectionsRef);
+                    this.presenceRef = newPresenceRef;
 
-                    // Настраиваем автоматическое удаление при отключении
-                    onDisconnect(presenceRef).remove()
-                        .then(() => console.debug("OnDisconnect handler установлен"))
-                        .catch(console.error);
+                    // Устанавливаем значение
+                    set(newPresenceRef, this.userId)
+                        .catch(error => console.error("Error setting presence:", error));
 
-                    // Устанавливаем текущего пользователя
-                    presenceRef.set(this.userId)
-                        .catch(console.error);
+                    // Настраиваем удаление при отключении
+                    onDisconnect(newPresenceRef).remove()
+                        .catch(error => console.error("OnDisconnect error:", error));
 
-                    // Следим за списком подключений
-                    const onlineUsersRef = ref(db, 'connections');
-                    onValue(onlineUsersRef, (snapshot) => {
+                    // Слушаем изменения
+                    onValue(connectionsRef, (snapshot) => {
                         const users = [];
                         snapshot.forEach(child => {
-                            const val = child.val();
-                            if(val) users.push(val);
+                            const user = child.val();
+                            if(user) users.push(user);
                         });
                         this.renderOnlineUsers(users);
-                    }, {
-                        onlyOnce: false
                     });
 
                 } catch(error) {
-                    console.error("Ошибка инициализации присутствия:", error);
+                    console.error("Presence system error:", error);
                 }
             }
 
             renderOnlineUsers(users) {
                 const countElement = document.getElementById('onlineCount');
-                const list = document.getElementById('onlineUsersList');
-                
                 if(countElement) countElement.textContent = users.length;
-                if(list) list.innerHTML = users.map(user => 
-                    `<li class="user-item">${this.sanitize(user)}</li>`
-                ).join('');
             }
-        }
+                }
 
         window.addEventListener('DOMContentLoaded', () => {
             new CyberChat();
@@ -219,8 +214,8 @@
     </script>
 </head>
 <body class="crt">
-    <div class="online-counter crt-effect">
-        Online: <span id="onlineCount">0</span>
+    <div class="online-counter">
+        ONLINE: <span id="onlineCount">0</span>
     </div>
     <canvas id="matrixCanvas"></canvas>
     <div class="chat-container"></div>
